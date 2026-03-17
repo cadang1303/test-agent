@@ -2,12 +2,17 @@ import { existsSync } from "fs";
 import { resolve } from "path";
 import { pathToFileURL } from "url";
 
+// GitHub Models — correct endpoint (updated from azure to github.ai)
+export const GITHUB_MODELS_ENDPOINT = "https://models.github.ai/inference";
+
+// Free models on GitHub Models.
+// IMPORTANT: model names must include the publisher prefix (e.g. "openai/gpt-4o-mini")
 export const GITHUB_MODELS = {
-  GPT_4O_MINI:   "gpt-4o-mini",                   // default — free, fast, great for code
-  GPT_4O:        "gpt-4o",                         // more powerful, still free (rate-limited)
-  LLAMA_3_3_70B: "Meta-Llama-3.3-70B-Instruct",   // open-source alternative
-  PHI_4_MINI:    "Phi-4-mini-instruct",            // lightweight + fast
-  DEEPSEEK_R1:   "DeepSeek-R1",                    // strong reasoning
+  GPT_4O_MINI:   "openai/gpt-4o-mini",                   // default — free, fast, great for code
+  GPT_4O:        "openai/gpt-4o",                         // more powerful, still free (rate-limited)
+  LLAMA_3_3_70B: "meta/Meta-Llama-3.3-70B-Instruct",     // open-source alternative
+  PHI_4_MINI:    "microsoft/Phi-4-mini-instruct",         // lightweight + fast
+  DEEPSEEK_R1:   "deepseek/DeepSeek-R1",                  // strong reasoning
 };
 
 const DEFAULTS = {
@@ -34,13 +39,16 @@ const DEFAULTS = {
 export async function loadConfig(overrides = {}) {
   let config = { ...DEFAULTS };
 
-  // Read env vars first so they can be overridden by config file or programmatic options
-  if (process.env.GITHUB_TOKEN)                       config.apiKey      = process.env.GITHUB_TOKEN;
+  // GH_MODELS_TOKEN = PAT with models:read scope (required for GitHub Models)
+  // GITHUB_TOKEN    = fallback (auto-set by Actions, but needs models:read if used)
+  if (process.env.GH_MODELS_TOKEN)                    config.apiKey      = process.env.GH_MODELS_TOKEN;
+  else if (process.env.GITHUB_TOKEN)                  config.apiKey      = process.env.GITHUB_TOKEN;
+
   if (process.env.REVIEWER_MODEL)                     config.model       = process.env.REVIEWER_MODEL;
   if (process.env.REVIEWER_SKILLS)                    config.skills      = process.env.REVIEWER_SKILLS.split(",").map(s => s.trim());
   if (process.env.REVIEWER_FAIL_ON_ERROR === "false") config.failOnError = false;
 
-  // Try to load optional project-level config file (ai-reviewer.config.js)
+  // Optional project-level config file
   const configPath = resolve(process.cwd(), "ai-reviewer.config.js");
   if (existsSync(configPath)) {
     try {
@@ -52,7 +60,7 @@ export async function loadConfig(overrides = {}) {
     }
   }
 
-  // Programmatic overrides win over everything (used by test-local.js and library callers)
+  // Programmatic overrides win over everything
   config = { ...config, ...overrides };
 
   return config;

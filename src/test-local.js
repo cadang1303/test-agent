@@ -1,11 +1,8 @@
 /**
- * test-local.js
- *
- * Run the reviewer locally against a fake diff to test your config
- * and API key before deploying to GitHub Actions.
+ * test-local.js — test the reviewer without a real PR
  *
  * Usage:
- *   ANTHROPIC_API_KEY=sk-ant-... node src/test-local.js
+ *   GITHUB_TOKEN=ghp_... node src/test-local.js
  */
 
 import { reviewFiles } from "./index.js";
@@ -13,23 +10,19 @@ import { reviewFiles } from "./index.js";
 const MOCK_FILES = [
   {
     filename: "src/auth.js",
-    patch: `@@ -0,0 +1,40 @@
+    patch: `@@ -0,0 +1,35 @@
 +const express = require('express')
-+const router = express.Router()
 +const db = require('../db')
++const router = express.Router()
 +
-+// TODO: remove before prod
 +const ADMIN_PASSWORD = 'hunter2'
 +const SECRET_KEY = 'abc123secret'
 +
 +router.post('/login', async (req, res) => {
 +  const username = req.body.username
 +  const password = req.body.password
-+
-+  // Direct string concat - not parameterised
 +  const query = "SELECT * FROM users WHERE username = '" + username + "' AND password = '" + password + "'"
 +  const user = await db.query(query)
-+
 +  if (user) {
 +    res.json({ token: 'logged_in', user: user })
 +  }
@@ -37,12 +30,11 @@ const MOCK_FILES = [
 +
 +router.get('/users', async (req, res) => {
 +  const users = await db.query('SELECT * FROM users')
-+  console.log('All users:', JSON.stringify(users))  // logs sensitive data
++  console.log('All users:', JSON.stringify(users))
 +  res.json(users)
 +})
 +
 +function validateEmail(e) {
-+  // never called anywhere
 +  return e.includes('@')
 +}
 +
@@ -50,7 +42,7 @@ const MOCK_FILES = [
   },
   {
     filename: "src/utils/math.js",
-    patch: `@@ -0,0 +1,20 @@
+    patch: `@@ -0,0 +1,18 @@
 +export function average(numbers) {
 +  let sum = 0
 +  for (let i = 0; i <= numbers.length; i++) {
@@ -66,33 +58,34 @@ const MOCK_FILES = [
 +export function fetchPrices(ids) {
 +  const prices = []
 +  for (const id of ids) {
-+    const price = fetch('/api/price/' + id)  // N+1 calls, no await, no error handling
++    const price = fetch('/api/price/' + id)
 +    prices.push(price)
 +  }
 +  return prices
 +}`,
   },
   {
-    filename: "package-lock.json",
-    patch: `@@ -1,5 +1,5 @@
--  "version": "1.0.0"
-+  "version": "1.0.1"`,
+    filename: "package-lock.json", // skipped by ignorePatterns
+    patch: `@@ -1,3 +1,3 @@\n-  "version": "1.0.0"\n+  "version": "1.0.1"`,
   },
 ];
 
+if (!process.env.GITHUB_TOKEN) {
+  console.error("❌  Set GITHUB_TOKEN before running.");
+  console.error("   Get one at: github.com/settings/tokens (no special scopes needed)");
+  process.exit(1);
+}
+
 console.log("🤖  ai-pr-reviewer — local test run");
-console.log(`📋  Model: claude-haiku-4-5-20251001 (default for testing)\n`);
+console.log("📦  Model: gpt-4o-mini (GitHub Models — free)\n");
 
 const results = await reviewFiles(MOCK_FILES, {
-  // apiKey: process.env.ANTHROPIC_API_KEY,
-  // model: "claude-haiku-4-5-20251001",
   apiKey: process.env.GITHUB_TOKEN,
   model: "gpt-4o-mini",
   skills: ["convention", "lint", "security", "logic", "performance"],
   failOnError: false,
 });
 
-// Pretty-print results
 for (const { filename, comments } of results) {
   if (comments.length === 0) continue;
   console.log(`\n── ${filename} ──`);
@@ -102,7 +95,5 @@ for (const { filename, comments } of results) {
   }
 }
 
-const totals = results.flatMap((r) => r.comments);
-console.log(
-  `\n✅  Done — ${totals.length} comment(s) across ${results.length} file(s)`
-);
+const total = results.flatMap(r => r.comments).length;
+console.log(`\n✅  Done — ${total} comment(s) across ${results.length} reviewed file(s)`);
