@@ -40,7 +40,8 @@ export function loadConfig(overrides = {}) {
   }
 
   // 3. Apply env var overrides
-  if (process.env.ANTHROPIC_API_KEY) config.apiKey = process.env.ANTHROPIC_API_KEY;
+  // if (process.env.ANTHROPIC_API_KEY) config.apiKey = process.env.ANTHROPIC_API_KEY;
+  if (process.env.GITHUB_TOKEN) config.apiKey = process.env.GITHUB_TOKEN;
   if (process.env.REVIEWER_MODEL) config.model = process.env.REVIEWER_MODEL;
   if (process.env.REVIEWER_SKILLS) config.skills = process.env.REVIEWER_SKILLS.split(",").map(s => s.trim());
   if (process.env.REVIEWER_FAIL_ON_ERROR === "false") config.failOnError = false;

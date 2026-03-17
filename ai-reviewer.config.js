@@ -11,7 +11,8 @@ export default {
   // claude-haiku-4-5-20251001 = fast & cheap (great for testing)
   // claude-sonnet-4-6         = smarter, balanced cost (recommended for production)
   // claude-opus-4-6           = most capable (expensive, for critical repos)
-  model: "claude-haiku-4-5-20251001",
+  // model: "claude-haiku-4-5-20251001",
+  model: "gpt-4o-mini",
 
   // ── Skills to enable ───────────────────────────────────────────────────
   // Available: convention | lint | security | logic | tests | performance | types

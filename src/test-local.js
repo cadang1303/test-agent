@@ -84,8 +84,10 @@ console.log("🤖  ai-pr-reviewer — local test run");
 console.log(`📋  Model: claude-haiku-4-5-20251001 (default for testing)\n`);
 
 const results = await reviewFiles(MOCK_FILES, {
-  apiKey: process.env.ANTHROPIC_API_KEY,
-  model: "claude-haiku-4-5-20251001",
+  // apiKey: process.env.ANTHROPIC_API_KEY,
+  // model: "claude-haiku-4-5-20251001",
+  apiKey: process.env.GITHUB_TOKEN,
+  model: "gpt-4o-mini",
   skills: ["convention", "lint", "security", "logic", "performance"],
   failOnError: false,
 });

@@ -3,7 +3,8 @@
  * Can be imported as a library or run via CLI / GitHub Actions.
  */
 
-import Anthropic from "@anthropic-ai/sdk";
+// import Anthropic from "@anthropic-ai/sdk";
+import OpenAI from "openai";
 import { buildReviewPrompt } from "./utils/prompt.js";
 import { parseReview } from "./utils/parser.js";
 import { chunkPatch } from "./utils/chunker.js";
@@ -11,7 +12,11 @@ import { loadConfig } from "./utils/config.js";
 
 export async function reviewFiles(files, options = {}) {
   const config = loadConfig(options);
-  const client = new Anthropic({ apiKey: config.apiKey });
+  // const client = new Anthropic({ apiKey: config.apiKey });
+  const client = new OpenAI({
+    apiKey: config.apiKey,
+    baseURL: "https://models.github.ai/inference",
+  });
 
   const allResults = [];
 

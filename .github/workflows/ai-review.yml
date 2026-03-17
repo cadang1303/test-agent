@@ -1,0 +1,53 @@
+name: AI Code Review
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+jobs:
+  ai-review:
+    name: AI PR Review
+    runs-on: ubuntu-latest
+
+    permissions:
+      pull-requests: write   # Post review comments
+      contents: read         # Checkout and read diff
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Full history needed for accurate diff
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      # ── Option A: install from npm (once you publish the package) ──────────
+      # - name: Install ai-pr-reviewer
+      #   run: npm install -g ai-pr-reviewer
+
+      # ── Option B: run directly from GitHub (no npm publish needed) ─────────
+      - name: Install ai-pr-reviewer from GitHub
+        run: |
+          npm install -g github:your-org/ai-pr-reviewer
+
+      # ── Option C: local install if you copy the package into the repo ──────
+      # - name: Install dependencies
+      #   working-directory: .ai-reviewer
+      #   run: npm install
+
+      - name: Run AI Review
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+
+          # Optional overrides (can also be set in ai-reviewer.config.js)
+          # REVIEWER_MODEL: claude-haiku-4-5-20251001   # default — cheap for testing
+          # REVIEWER_MODEL: claude-sonnet-4-6            # upgrade for production
+          # REVIEWER_SKILLS: convention,lint,security    # comma-separated subset
+          # REVIEWER_FAIL_ON_ERROR: "true"               # fail CI on errors
+        run: ai-pr-reviewer
