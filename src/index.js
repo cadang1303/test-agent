@@ -1,21 +1,40 @@
 /**
  * ai-pr-reviewer — core module
- * Can be imported as a library or run via CLI / GitHub Actions.
+ * Uses GitHub Models (free) via the OpenAI-compatible API.
  */
 
-// import Anthropic from "@anthropic-ai/sdk";
-import OpenAI from "openai";
 import { buildReviewPrompt } from "./utils/prompt.js";
 import { parseReview } from "./utils/parser.js";
 import { chunkPatch } from "./utils/chunker.js";
-import { loadConfig } from "./utils/config.js";
+import { loadConfig, GITHUB_MODELS_ENDPOINT } from "./utils/config.js";
 
 export async function reviewFiles(files, options = {}) {
   const config = options.apiKey ? options : await loadConfig(options);
-  // const client = new Anthropic({ apiKey: config.apiKey });
+
+  if (!config.apiKey) {
+    throw new Error(
+      "No API key found.\n" +
+      "GitHub Models requires a PAT with models:read scope.\n" +
+      "→ Create one at: github.com/settings/tokens\n" +
+      "→ Add it as repo secret GH_MODELS_TOKEN"
+    );
+  }
+
+  let OpenAI;
+  try {
+    ({ default: OpenAI } = await import("openai"));
+  } catch {
+    throw new Error(
+      'Could not load "openai" package. Run: npm install inside the .ai-reviewer folder.'
+    );
+  }
+
   const client = new OpenAI({
+    baseURL: GITHUB_MODELS_ENDPOINT,
     apiKey: config.apiKey,
-    baseURL: "https://models.github.ai/inference",
+    defaultHeaders: {
+      "X-GitHub-Api-Version": "2022-11-28",
+    },
   });
 
   const allResults = [];
@@ -26,28 +45,40 @@ export async function reviewFiles(files, options = {}) {
 
     console.log(`  Reviewing: ${file.filename}`);
 
-    // Split large diffs into chunks to stay within token limits
     const chunks = chunkPatch(file.patch, config.maxTokensPerChunk);
     const fileComments = [];
 
     for (const chunk of chunks) {
       const prompt = buildReviewPrompt(file.filename, chunk, config.skills);
 
-      // const response = await client.messages.create({
-      //   model: config.model,
-      //   max_tokens: 1024,
-      //   system: getSystemPrompt(config),
-      //   messages: [{ role: "user", content: prompt }],
-      // });
+      let response;
+      try {
+        response = await client.chat.completions.create({
+          model: config.model,
+          max_tokens: 1024,
+          messages: [
+            { role: "system", content: getSystemPrompt() },
+            { role: "user", content: prompt },
+          ],
+        });
+      } catch (err) {
+        console.error(`  ⚠️  API call failed for ${file.filename}: ${err.message}`);
+        if (err.response) {
+          console.error(`     Status: ${err.response.status}`);
+          console.error(`     Body:`, JSON.stringify(err.response.data ?? err.response.body, null, 2));
+        }
+        continue; // skip this chunk, don't crash the whole run
+      }
 
-      const response = await client.chat.completions.create({
-        model: config.model,
-        messages: [{ role: "user", content: prompt }],
-        temperature: 0,
-        max_tokens: 1024,
-      });
+      // Guard: log full response if shape is unexpected
+      if (!response?.choices?.length) {
+        console.error(`  ⚠️  Unexpected response shape for ${file.filename}:`);
+        console.error("     ", JSON.stringify(response, null, 2));
+        continue;
+      }
 
-      const parsed = parseReview(response.content[0].text, file.filename);
+      const text = response.choices[0]?.message?.content ?? "";
+      const parsed = parseReview(text, file.filename);
       fileComments.push(...parsed.comments);
     }
 
@@ -64,7 +95,7 @@ function shouldSkipFile(filename, ignorePatterns) {
   });
 }
 
-function getSystemPrompt(config) {
+function getSystemPrompt() {
   return `You are an expert code reviewer embedded in a CI pipeline.
 Your job is to review pull request diffs and return structured JSON feedback.
 Be concise, actionable, and specific. Focus on real issues, not nitpicks.
