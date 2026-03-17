@@ -1,9 +1,10 @@
 import { existsSync } from "fs";
 import { resolve } from "path";
+import { pathToFileURL } from "url";
 
 const DEFAULTS = {
   // Use claude-haiku-4-5 for cheap/fast testing; swap to claude-sonnet-4-6 for production
-  model: "claude-haiku-4-5-20251001",
+  model: "gpt-4o-mini",
   skills: ["convention", "lint", "security", "logic", "tests"],
   ignorePatterns: [
     "package-lock.json",
@@ -23,7 +24,7 @@ const DEFAULTS = {
   language: "auto", // auto-detect from file extension
 };
 
-export function loadConfig(overrides = {}) {
+export async function loadConfig(overrides = {}) {
   // 1. Start with defaults
   let config = { ...DEFAULTS };
 
@@ -31,7 +32,7 @@ export function loadConfig(overrides = {}) {
   const configPath = resolve(process.cwd(), "ai-reviewer.config.js");
   if (existsSync(configPath)) {
     try {
-      const projectConfig = await import(configPath);
+      const projectConfig = await import(pathToFileURL(configPath).href);
       config = { ...config, ...(projectConfig.default ?? projectConfig) };
       console.log("📋  Loaded config from ai-reviewer.config.js");
     } catch {
