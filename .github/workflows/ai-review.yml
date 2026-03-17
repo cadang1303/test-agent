@@ -12,6 +12,8 @@ jobs:
     permissions:
       pull-requests: write   # Post review comments
       contents: read         # Checkout and read diff
+      models: read
+      issues: write
 
     steps:
       - name: Checkout
