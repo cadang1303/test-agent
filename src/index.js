@@ -33,11 +33,18 @@ export async function reviewFiles(files, options = {}) {
     for (const chunk of chunks) {
       const prompt = buildReviewPrompt(file.filename, chunk, config.skills);
 
-      const response = await client.messages.create({
+      // const response = await client.messages.create({
+      //   model: config.model,
+      //   max_tokens: 1024,
+      //   system: getSystemPrompt(config),
+      //   messages: [{ role: "user", content: prompt }],
+      // });
+
+      const response = await client.chat.completions.create({
         model: config.model,
-        max_tokens: 1024,
-        system: getSystemPrompt(config),
         messages: [{ role: "user", content: prompt }],
+        temperature: 0,
+        max_tokens: 1024,
       });
 
       const parsed = parseReview(response.content[0].text, file.filename);
