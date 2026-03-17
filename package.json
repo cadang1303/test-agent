@@ -11,10 +11,18 @@
     "review": "node src/cli.js",
     "test": "node src/test-local.js"
   },
-  "keywords": ["github-actions", "code-review", "ai", "claude", "pull-request", "lint"],
+  "keywords": [
+    "github-actions",
+    "code-review",
+    "ai",
+    "claude",
+    "pull-request",
+    "lint"
+  ],
   "license": "MIT",
   "dependencies": {
     "@anthropic-ai/sdk": "^0.39.0",
-    "@octokit/rest": "^21.0.0"
+    "@octokit/rest": "^21.0.0",
+    "openai": "^6.31.0"
   }
 }
