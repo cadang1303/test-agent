@@ -29,18 +29,18 @@ jobs:
       #   run: npm install -g ai-pr-reviewer
 
       # ── Option B: run directly from GitHub (no npm publish needed) ─────────
-      - name: Install ai-pr-reviewer from GitHub
-        run: |
-          npm install -g github:your-org/ai-pr-reviewer
+      # - name: Install ai-pr-reviewer from GitHub
+      #   run: |
+      #     npm install -g github:your-org/ai-pr-reviewer
 
       # ── Option C: local install if you copy the package into the repo ──────
-      # - name: Install dependencies
-      #   working-directory: .ai-reviewer
-      #   run: npm install
+      - name: Install dependencies
+        working-directory: .ai-reviewer
+        run: npm install
 
       - name: Run AI Review
         env:
-          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          # ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITHUB_REPOSITORY: ${{ github.repository }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
@@ -50,4 +50,4 @@ jobs:
           # REVIEWER_MODEL: claude-sonnet-4-6            # upgrade for production
           # REVIEWER_SKILLS: convention,lint,security    # comma-separated subset
           # REVIEWER_FAIL_ON_ERROR: "true"               # fail CI on errors
-        run: ai-pr-reviewer
+        # run: ai-pr-reviewer
