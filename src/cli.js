@@ -10,7 +10,7 @@ import { loadConfig } from "./utils/config.js";
 import { buildSummary } from "./utils/summary.js";
 
 async function main() {
-  const config = loadConfig();
+  const config = await loadConfig();
 
   // ── Validate required env vars ──────────────────────────────────────────
   const required = ["GITHUB_TOKEN", "ANTHROPIC_API_KEY", "GITHUB_REPOSITORY"];

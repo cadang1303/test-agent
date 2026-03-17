@@ -10,7 +10,7 @@ import { chunkPatch } from "./utils/chunker.js";
 import { loadConfig } from "./utils/config.js";
 
 export async function reviewFiles(files, options = {}) {
-  const config = loadConfig(options);
+  const config = await loadConfig(options);
   const client = new Anthropic({ apiKey: config.apiKey });
 
   const allResults = [];
