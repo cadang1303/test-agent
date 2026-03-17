@@ -51,3 +51,4 @@ jobs:
           # REVIEWER_SKILLS: convention,lint,security    # comma-separated subset
           # REVIEWER_FAIL_ON_ERROR: "true"               # fail CI on errors
         # run: ai-pr-reviewer
+        run: node src/cli.js
