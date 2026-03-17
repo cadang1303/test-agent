@@ -1,64 +1,56 @@
 # ai-pr-reviewer
 
-AI-powered pull request code reviewer using Claude. Drop into any GitHub project via one workflow file — no code changes needed.
-
-## Features
-
-- 🔍 **7 review skills**: convention, lint, security, logic, tests, performance, types
-- 🌐 **Multi-language**: JS/TS, Python, Go, Java, Ruby, Rust, PHP, C#, C++
-- 💬 **Inline PR comments** on the exact diff lines with issues
-- 📊 **PR summary comment** with severity breakdown per file
-- ❌ **CI gate**: optionally fail the check on errors to block merging
-- 🔧 **Per-project config** via `ai-reviewer.config.js`
-- 💰 **Cheap for testing**: defaults to `claude-haiku-4-5` (~$0.001 per review)
+AI-powered pull request code reviewer using **Anthropic Claude**. Drop into any project with one setup command — reviews every PR commit automatically.
 
 ---
 
-## Quick start (2 steps)
+## Quick start
 
-### 1. Add the secret
+### 1. Add your Anthropic API key as a secret
 
-In your GitHub repo: **Settings → Secrets → Actions → New repository secret**
+In your GitHub repo: **Settings → Secrets and variables → Actions → New repository secret**
 
 ```
 Name:  ANTHROPIC_API_KEY
 Value: sk-ant-...
 ```
 
-### 2. Add the workflow
+Get your key at [console.anthropic.com](https://console.anthropic.com).
 
-Copy `templates/ai-review.yml` to `.github/workflows/ai-review.yml` in your project.
+### 2. Run the setup script
 
-That's it — every new commit to a PR will trigger a review.
+From inside your project root:
 
----
-
-## Use as a library
-
-```js
-import { reviewFiles } from "ai-pr-reviewer";
-
-const results = await reviewFiles(files, {
-  apiKey: process.env.ANTHROPIC_API_KEY,
-  model: "claude-haiku-4-5-20251001",
-  skills: ["security", "logic"],
-});
+```bash
+bash /path/to/ai-pr-reviewer/setup.sh
 ```
 
+### 3. Commit and push
+
+```bash
+git add .ai-reviewer .github/workflows/ai-review.yml ai-reviewer.config.js
+git commit -m "chore: add AI PR reviewer"
+git push
+```
+
+The reviewer runs automatically on every new PR commit.
+
 ---
 
-## Project-level config
+## Project structure after setup
 
-Create `ai-reviewer.config.js` in your project root:
-
-```js
-export default {
-  model: "claude-haiku-4-5-20251001",  // cheap for testing
-  // model: "claude-sonnet-4-6",        // upgrade for production
-  skills: ["convention", "lint", "security", "logic", "tests"],
-  failOnError: true,
-  ignorePatterns: ["dist/", "*.min.js", "migrations/"],
-};
+```
+your-project/
+├── .ai-reviewer/                    ← reviewer source (committed to your repo)
+│   ├── package.json
+│   └── src/
+│       ├── cli.js
+│       ├── index.js
+│       ├── test-local.js
+│       └── utils/
+├── .github/workflows/
+│   └── ai-review.yml                ← triggers on every PR commit
+└── ai-reviewer.config.js            ← optional per-project config
 ```
 
 ---
@@ -67,16 +59,31 @@ export default {
 
 | Model | Speed | Cost | Best for |
 |---|---|---|---|
-| `claude-haiku-4-5-20251001` | ⚡ Fast | 💚 Cheapest | Testing, high-volume |
-| `claude-sonnet-4-6` | ⚖️ Balanced | 💛 Moderate | Production |
-| `claude-opus-4-6` | 🧠 Thorough | 🔴 Premium | Critical/security reviews |
+| `claude-haiku-4-5-20251001` | ⚡ Fastest | 💚 Cheapest | Testing, high-volume repos |
+| `claude-sonnet-4-6` | ⚖️ Balanced | 💛 Moderate | Production (recommended) |
+| `claude-opus-4-6` | 🧠 Thorough | 🔴 Premium | Critical / security-sensitive repos |
+
+---
+
+## Per-project config
+
+Edit `ai-reviewer.config.js` in your project root:
+
+```js
+export default {
+  model: "claude-haiku-4-5-20251001",  // swap to claude-sonnet-4-6 for production
+  skills: ["convention", "lint", "security", "logic", "tests"],
+  failOnError: true,
+  ignorePatterns: ["dist/", "*.min.js", "migrations/"],
+};
+```
 
 ---
 
 ## Test locally
 
 ```bash
-ANTHROPIC_API_KEY=sk-ant-... node src/test-local.js
+ANTHROPIC_API_KEY=sk-ant-... node .ai-reviewer/src/test-local.js
 ```
 
 ---
@@ -97,10 +104,10 @@ ANTHROPIC_API_KEY=sk-ant-... node src/test-local.js
 
 ## Environment variables
 
-| Variable | Default | Description |
+| Variable | Required | Description |
 |---|---|---|
-| `ANTHROPIC_API_KEY` | *(required)* | Your Anthropic API key |
-| `GITHUB_TOKEN` | Auto-set by Actions | GitHub token for posting comments |
-| `REVIEWER_MODEL` | `claude-haiku-4-5-20251001` | Override the model |
-| `REVIEWER_SKILLS` | all skills | Comma-separated skill list |
-| `REVIEWER_FAIL_ON_ERROR` | `true` | Fail CI on errors |
+| `ANTHROPIC_API_KEY` | ✅ Yes | Your Anthropic API key |
+| `GITHUB_TOKEN` | Auto-set | Used for posting PR comments |
+| `REVIEWER_MODEL` | Optional | Override the model |
+| `REVIEWER_SKILLS` | Optional | Comma-separated skill list |
+| `REVIEWER_FAIL_ON_ERROR` | Optional | Set `"false"` to warn without blocking merge |

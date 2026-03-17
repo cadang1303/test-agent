@@ -1,6 +1,7 @@
 /**
  * ai-pr-reviewer — core module
- * Can be imported as a library or run via CLI / GitHub Actions.
+ * Uses Anthropic Claude via the official SDK.
+ * Requires ANTHROPIC_API_KEY set as a GitHub Actions secret.
  */
 
 import Anthropic from "@anthropic-ai/sdk";
@@ -10,7 +11,18 @@ import { chunkPatch } from "./utils/chunker.js";
 import { loadConfig } from "./utils/config.js";
 
 export async function reviewFiles(files, options = {}) {
-  const config = await loadConfig(options);
+  // Accept a pre-resolved config (from cli.js) or resolve from env + defaults
+  const config = options.apiKey ? options : await loadConfig(options);
+
+  if (!config.apiKey) {
+    throw new Error(
+      "No ANTHROPIC_API_KEY found.\n" +
+      "→ Get your key at: console.anthropic.com\n" +
+      "→ Add it as a GitHub Actions secret named ANTHROPIC_API_KEY\n" +
+      "→ Add to workflow env: ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}"
+    );
+  }
+
   const client = new Anthropic({ apiKey: config.apiKey });
 
   const allResults = [];
@@ -21,21 +33,36 @@ export async function reviewFiles(files, options = {}) {
 
     console.log(`  Reviewing: ${file.filename}`);
 
-    // Split large diffs into chunks to stay within token limits
     const chunks = chunkPatch(file.patch, config.maxTokensPerChunk);
     const fileComments = [];
 
     for (const chunk of chunks) {
       const prompt = buildReviewPrompt(file.filename, chunk, config.skills);
 
-      const response = await client.messages.create({
-        model: config.model,
-        max_tokens: 1024,
-        system: getSystemPrompt(config),
-        messages: [{ role: "user", content: prompt }],
-      });
+      let response;
+      try {
+        response = await client.messages.create({
+          model: config.model,
+          max_tokens: 1024,
+          system: getSystemPrompt(),
+          messages: [{ role: "user", content: prompt }],
+        });
+      } catch (err) {
+        console.error(`  ⚠️  API call failed for ${file.filename}: ${err.message}`);
+        if (err.status)  console.error(`     Status: ${err.status}`);
+        if (err.error)   console.error(`     Detail: ${JSON.stringify(err.error, null, 2)}`);
+        continue;
+      }
 
-      const parsed = parseReview(response.content[0].text, file.filename);
+      // Anthropic SDK: response.content is an array of blocks
+      const textBlock = response.content?.find(b => b.type === "text");
+      if (!textBlock) {
+        console.warn(`  ⚠️  No text block in response for ${file.filename}`);
+        console.warn("     Full response:", JSON.stringify(response, null, 2));
+        continue;
+      }
+
+      const parsed = parseReview(textBlock.text, file.filename);
       fileComments.push(...parsed.comments);
     }
 
@@ -52,7 +79,7 @@ function shouldSkipFile(filename, ignorePatterns) {
   });
 }
 
-function getSystemPrompt(config) {
+function getSystemPrompt() {
   return `You are an expert code reviewer embedded in a CI pipeline.
 Your job is to review pull request diffs and return structured JSON feedback.
 Be concise, actionable, and specific. Focus on real issues, not nitpicks.
